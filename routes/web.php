@@ -5,10 +5,13 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\Employer;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\JobListingController;
 use App\Http\Controllers\Seeker;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/lowongan', [JobListingController::class, 'index'])->name('jobs.index');
+Route::get('/lowongan/{jobListing}', [JobListingController::class, 'show'])->name('jobs.show');
 Route::get('/perusahaan', [CompanyController::class, 'index'])->name('companies.index');
 Route::get('/perusahaan/{company}', [CompanyController::class, 'show'])->name('companies.show');
 
@@ -37,6 +40,10 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('seeker')->name('seeker.'
         ->except(['create', 'show'])->parameters(['skill' => 'skill'])->names('skills');
     Route::resource('pengalaman', Seeker\WorkExperienceController::class)
         ->except(['create', 'show'])->parameters(['pengalaman' => 'experience'])->names('experiences');
+
+    Route::get('/lowongan', [Seeker\JobListingController::class, 'index'])->name('jobs.index');
+    Route::get('/lowongan/{jobListing}', [Seeker\JobListingController::class, 'show'])->name('jobs.show');
+    Route::post('/lowongan/{jobListing}/lamar', [Seeker\ApplicationController::class, 'store'])->name('applications.store');
 });
 
 Route::middleware(['auth', 'role:employer'])->prefix('employer')->name('employer.')->group(function () {
@@ -44,4 +51,11 @@ Route::middleware(['auth', 'role:employer'])->prefix('employer')->name('employer
 
     Route::get('/perusahaan', [Employer\CompanyController::class, 'edit'])->name('company.edit');
     Route::put('/perusahaan', [Employer\CompanyController::class, 'update'])->name('company.update');
+
+    Route::middleware('company.required')->group(function () {
+        Route::resource('lowongan', Employer\JobListingController::class)
+            ->except(['show', 'destroy'])->parameters(['lowongan' => 'jobListing'])->names('jobs');
+        Route::patch('/lowongan/{jobListing}/tutup', [Employer\JobListingController::class, 'close'])->name('jobs.close');
+        Route::patch('/lowongan/{jobListing}/buka', [Employer\JobListingController::class, 'reopen'])->name('jobs.reopen');
+    });
 });
