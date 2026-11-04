@@ -41,9 +41,18 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('seeker')->name('seeker.'
     Route::resource('pengalaman', Seeker\WorkExperienceController::class)
         ->except(['create', 'show'])->parameters(['pengalaman' => 'experience'])->names('experiences');
 
+    Route::get('/cv', [Seeker\CvController::class, 'show'])->name('cv.show');
+    Route::post('/cv', [Seeker\CvController::class, 'store'])->name('cv.store');
+    Route::delete('/cv', [Seeker\CvController::class, 'destroy'])->name('cv.destroy');
+    Route::get('/cv/unduh', [Seeker\CvController::class, 'download'])->name('cv.download');
+
     Route::get('/lowongan', [Seeker\JobListingController::class, 'index'])->name('jobs.index');
     Route::get('/lowongan/{jobListing}', [Seeker\JobListingController::class, 'show'])->name('jobs.show');
     Route::post('/lowongan/{jobListing}/lamar', [Seeker\ApplicationController::class, 'store'])->name('applications.store');
+
+    Route::get('/lamaran', [Seeker\ApplicationController::class, 'index'])->name('applications.index');
+    Route::get('/lamaran/status', [Seeker\ApplicationController::class, 'status'])->name('applications.status');
+    Route::get('/lamaran/{application}', [Seeker\ApplicationController::class, 'show'])->name('applications.show');
 });
 
 Route::middleware(['auth', 'role:employer'])->prefix('employer')->name('employer.')->group(function () {

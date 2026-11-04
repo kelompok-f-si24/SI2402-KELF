@@ -5,13 +5,69 @@ namespace App\Http\Controllers\Seeker;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seeker\ApplicationRequest;
+use App\Models\Application;
 use App\Models\JobListing;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class ApplicationController extends Controller
 {
+    /**
+     * Application history.
+     */
+    public function index(Request $request): View
+    {
+        return view('seeker.applications.index', [
+            'applications' => $request->user()->applications()
+                ->with('jobListing.company')
+                ->latest()
+                ->paginate(10),
+        ]);
+    }
+
+    /**
+     * Application status overview grouped by selection stage.
+     */
+    public function status(Request $request): View
+    {
+        $request->validate(['status' => ['nullable', Rule::enum(ApplicationStatus::class)]]);
+
+        $statusCounts = $request->user()->applications()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return view('seeker.applications.status', [
+            'statuses' => ApplicationStatus::cases(),
+            'statusCounts' => $statusCounts,
+            'activeStatus' => $request->enum('status', ApplicationStatus::class),
+            'applications' => $request->user()->applications()
+                ->with('jobListing.company')
+                ->when($request->enum('status', ApplicationStatus::class), fn ($query, ApplicationStatus $status) => $query->where('status', $status))
+                ->latest('status_updated_at')
+                ->latest()
+                ->paginate(10)
+                ->withQueryString(),
+        ]);
+    }
+
+    /**
+     * Show a single application and its status.
+     */
+    public function show(Application $application): View
+    {
+        abort_unless($application->user_id === auth()->id(), 403, 'Lamaran ini bukan milik Anda.');
+
+        return view('seeker.applications.show', [
+            'application' => $application->load('jobListing.company'),
+            'statuses' => ApplicationStatus::cases(),
+        ]);
+    }
+
     /**
      * Submit an application for an open job listing.
      */
