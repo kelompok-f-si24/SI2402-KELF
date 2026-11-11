@@ -10,6 +10,7 @@ use App\Http\Controllers\Seeker;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/lowongan', [JobListingController::class, 'index'])->name('jobs.index');
 Route::get('/perusahaan', [CompanyController::class, 'index'])->name('companies.index');
 Route::get('/perusahaan/{company}', [CompanyController::class, 'show'])->name('companies.show');
 
@@ -38,6 +39,8 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('seeker')->name('seeker.'
         ->except(['create', 'show'])->parameters(['skill' => 'skill'])->names('skills');
     Route::resource('pengalaman', Seeker\WorkExperienceController::class)
         ->except(['create', 'show'])->parameters(['pengalaman' => 'experience'])->names('experiences');
+
+    Route::get('/lowongan', [Seeker\JobListingController::class, 'index'])->name('jobs.index');
 });
 
 Route::middleware(['auth', 'role:employer'])->prefix('employer')->name('employer.')->group(function () {
