@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -42,5 +43,19 @@ class LoginController extends Controller
 
         return redirect()->intended(route($request->user()->dashboardRouteName()))
             ->with('success', 'Selamat datang kembali, '.$request->user()->name.'!');
+    }
+
+    /**
+     * Log the user out and end the session safely.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('home')
+            ->with('success', 'Anda berhasil logout. Sampai jumpa lagi!');
     }
 }
