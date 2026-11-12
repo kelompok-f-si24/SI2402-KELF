@@ -91,8 +91,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('/lowongan/{jobListing}/status', [Admin\JobListingController::class, 'updateStatus'])->name('jobs.status');
     Route::delete('/lowongan/{jobListing}', [Admin\JobListingController::class, 'destroy'])->name('jobs.destroy');
 });
-    });
-});
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Landing admin — route admin.dashboard harus ada agar login & /dashboard tidak error.
