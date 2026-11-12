@@ -11,7 +11,7 @@
     @include('companies.partials.profile', ['company' => $company])
 
     <div class="card mt-6 p-6">
-        <p class="text-sm text-slate-500">Pemilik akun: <a href="{{ route('admin.users.show', $company->user) }}" class="font-semibold text-navy-700 hover:underline">{{ $company->user->name }}</a> ({{ $company->user->email }})</p>
+        <p class="text-sm text-slate-500">Pemilik akun: @if (Route::has('admin.users.show'))<a href="{{ route('admin.users.show', $company->user) }}" class="font-semibold text-navy-700 hover:underline">{{ $company->user->name }}</a>@else<span class="font-semibold text-slate-700">{{ $company->user->name }}</span>@endif ({{ $company->user->email }})</p>
     </div>
 
     <div class="card mt-6 overflow-hidden">
