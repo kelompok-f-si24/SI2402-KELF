@@ -54,6 +54,7 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('seeker')->name('seeker.'
     Route::get('/lamaran', [Seeker\ApplicationController::class, 'index'])->name('applications.index');
     Route::get('/lamaran/status', [Seeker\ApplicationController::class, 'status'])->name('applications.status');
     Route::get('/lamaran/{application}', [Seeker\ApplicationController::class, 'show'])->name('applications.show');
+    Route::get('/lowongan', [Seeker\JobListingController::class, 'index'])->name('jobs.index');
 });
 
 Route::middleware(['auth', 'role:employer'])->prefix('employer')->name('employer.')->group(function () {
@@ -89,4 +90,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/lowongan/{jobListing}', [Admin\JobListingController::class, 'show'])->name('jobs.show');
     Route::patch('/lowongan/{jobListing}/status', [Admin\JobListingController::class, 'updateStatus'])->name('jobs.status');
     Route::delete('/lowongan/{jobListing}', [Admin\JobListingController::class, 'destroy'])->name('jobs.destroy');
+});
+    });
 });
