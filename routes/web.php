@@ -93,3 +93,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
     });
 });
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Landing admin — route admin.dashboard harus ada agar login & /dashboard tidak error.
+    // Halaman monitoring admin sendiri masih menjadi tiket tim.
+    Route::get('/dashboard', fn () => redirect()->route('admin.companies.index'))->name('dashboard');
+
+    Route::get('/perusahaan', [Admin\CompanyController::class, 'index'])->name('companies.index');
+    Route::get('/perusahaan/{company}', [Admin\CompanyController::class, 'show'])->name('companies.show');
+    Route::patch('/perusahaan/{company}/verifikasi', [Admin\CompanyController::class, 'toggleVerified'])->name('companies.verify');
+    Route::delete('/perusahaan/{company}', [Admin\CompanyController::class, 'destroy'])->name('companies.destroy');
+
+    Route::get('/lowongan', [Admin\JobListingController::class, 'index'])->name('jobs.index');
+    Route::get('/lowongan/{jobListing}', [Admin\JobListingController::class, 'show'])->name('jobs.show');
+    Route::patch('/lowongan/{jobListing}/status', [Admin\JobListingController::class, 'updateStatus'])->name('jobs.status');
+    Route::delete('/lowongan/{jobListing}', [Admin\JobListingController::class, 'destroy'])->name('jobs.destroy');
+});

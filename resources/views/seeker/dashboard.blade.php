@@ -4,11 +4,12 @@
     </x-page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <x-stat-card label="Total Lamaran" :value="$totalApplications" icon="clipboard" :href="route('seeker.applications.index')" />
+        <x-stat-card label="Total Lamaran" :value="$totalApplications" icon="clipboard"
+            :href="Route::has('seeker.applications.index') ? route('seeker.applications.index') : null" />
         @foreach ($statuses as $status)
             <x-stat-card :label="$status->label()" :value="$statusCounts[$status->value] ?? 0" icon="check-circle"
                 :tone="['amber' => 'amber', 'sky' => 'sky', 'green' => 'green', 'red' => 'red'][$status->color()]"
-                :href="route('seeker.applications.status', ['status' => $status->value])" />
+                :href="Route::has('seeker.applications.status') ? route('seeker.applications.status', ['status' => $status->value]) : null" />
         @endforeach
     </div>
 
@@ -16,23 +17,26 @@
         <div class="card p-6 lg:col-span-2">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="font-semibold text-slate-900">Lamaran Terbaru</h2>
-                <a href="{{ route('seeker.applications.index') }}" class="text-sm font-medium text-navy-700 hover:underline">Lihat semua</a>
+                @if (Route::has('seeker.applications.index'))
+                    <a href="{{ route('seeker.applications.index') }}" class="text-sm font-medium text-navy-700 hover:underline">Lihat semua</a>
+                @endif
             </div>
             @if ($recentApplications->isEmpty())
                 <x-empty-state icon="clipboard" title="Belum ada lamaran" message="Mulai cari lowongan dan kirim lamaran pertama Anda.">
                     <a href="{{ route('seeker.jobs.index') }}" class="btn btn-primary">Cari Lowongan</a>
                 </x-empty-state>
             @else
+                @php($canShowApplication = Route::has('seeker.applications.show'))
                 <div class="divide-y divide-slate-100">
                     @foreach ($recentApplications as $application)
-                        <a href="{{ route('seeker.applications.show', $application) }}" class="flex items-center gap-4 py-3 hover:bg-slate-50/60">
+                        <{{ $canShowApplication ? 'a' : 'div' }} @if ($canShowApplication) href="{{ route('seeker.applications.show', $application) }}" @endif class="flex items-center gap-4 py-3 hover:bg-slate-50/60">
                             <x-avatar :src="$application->jobListing->company->logoUrl()" :initials="$application->jobListing->company->initials()" rounded="rounded-lg" />
                             <div class="min-w-0 flex-1">
                                 <p class="truncate font-medium text-slate-900">{{ $application->jobListing->title }}</p>
                                 <p class="truncate text-sm text-slate-500">{{ $application->jobListing->company->name }} &middot; {{ $application->created_at->translatedFormat('d M Y') }}</p>
                             </div>
                             <x-badge :color="$application->status->color()">{{ $application->status->label() }}</x-badge>
-                        </a>
+                        </{{ $canShowApplication ? 'a' : 'div' }}>
                     @endforeach
                 </div>
             @endif
@@ -68,7 +72,7 @@
         @else
             <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 @foreach ($recommendedJobs as $job)
-                    <x-job-card :job="$job" :href="route('seeker.jobs.show', $job)" />
+                    <x-job-card :job="$job" :href="Route::has('seeker.jobs.show') ? route('seeker.jobs.show', $job) : null" />
                 @endforeach
             </div>
         @endif

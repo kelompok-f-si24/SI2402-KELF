@@ -73,7 +73,7 @@
             @else
                 <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                     @foreach ($latestJobs as $job)
-                        <x-job-card :job="$job" :href="route('jobs.show', $job)" />
+                        <x-job-card :job="$job" :href="Route::has('jobs.show') ? route('jobs.show', $job) : null" />
                     @endforeach
                 </div>
             @endif

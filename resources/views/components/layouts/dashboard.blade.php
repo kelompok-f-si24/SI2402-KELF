@@ -43,6 +43,26 @@
             ],
         ],
     };
+
+    // Sembunyikan menu yang route-nya belum terdaftar atau controller-nya belum
+    // ada — fitur milik tiket lain yang belum diimplementasi. Menu otomatis
+    // muncul sendiri begitu teman merge kode + route mereka.
+    $menuAvailable = function (string $routeName): bool {
+        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName($routeName);
+
+        if (! $route) {
+            return false;
+        }
+
+        $controller = $route->getAction('controller');
+
+        return $controller === null || class_exists(explode('@', $controller)[0]);
+    };
+
+    $menus = collect($menus)
+        ->map(fn (array $items) => array_values(array_filter($items, fn (array $item) => $menuAvailable($item[1]))))
+        ->filter()
+        ->all();
 @endphp
 
 <x-layouts.base :title="$title">
