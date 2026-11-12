@@ -3,7 +3,7 @@ Selenium E2E - Lokerin (SI2402-KELF)
 =====================================
 Menguji 2 tiket milik FA:
   TF-5 : register akun sesuai peran (job seeker / employer)
-  TF-7 : logout aman (mengakhiri sesi)
+  TF-7 : logout aman lewat tombol UI di dashboard (akhiri sesi)
 
 Cara pakai (dari folder project):
     python tests\\selenium\\test_lokerin.py                 # jalankan semua test
@@ -15,13 +15,8 @@ Catatan:
   di akhir). Untuk membuka web manual pakai: http://localhost:8000
 - Butuh Chrome terinstall + internet (Selenium Manager mengunduh chromedriver
   sekali saja).
-- Setelah register, user diarahkan ke dashboard sesuai peran. Halaman dashboard
-  masih error 500 karena route fitur milik tiket lain (seeker.cv.show,
-  employer.applicants.*) belum ada - jadi test TF-5 memverifikasi REDIRECT
-  sesuai peran, bukan isi halaman dashboard.
-- Karena tombol Logout ada di dashboard, test TF-7 mengirim POST /logout
-  dari halaman publik dengan token CSRF segar (cookie XSRF-TOKEN didekripsi
-  oleh decrypt_xsrp.php). Begitu dashboard teman-merge, tombol UI bisa diuji.
+- Menu sidebar otomatis menyembunyikan fitur yang route/controller-nya belum ada
+  (milik tiket lain) — test memakai menu yang tersedia.
 """
 
 import os
@@ -36,11 +31,11 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 PROJECT = Path(__file__).resolve().parents[2]
 PHP = r"C:\laragon\bin\php\php-8.4.27-Win32-vs17-x64\php.exe"
-DECRYPT_HELPER = Path(__file__).with_name("decrypt_xsrp.php")
 PORT = int(os.environ.get("LOKERIN_PORT", "8090"))
 BASE = f"http://127.0.0.1:{PORT}"
 WAIT = 15
@@ -146,28 +141,6 @@ def email_unik(prefix):
     return f"selenium.{prefix}.{uuid.uuid4().hex[:8]}@lokerin.test"
 
 
-def decrypt_xsrf(driver):
-    """Ambil token CSRF segar dari cookie XSRF-TOKEN (didekripsi via PHP)."""
-    cookie = driver.get_cookie("XSRF-TOKEN")
-    assert cookie, "Cookie XSRF-TOKEN tidak ditemukan"
-
-    env = os.environ.copy()
-    env["XSRF_VAL"] = cookie["value"]
-    out = subprocess.check_output(
-        [PHP, str(DECRYPT_HELPER)],
-        env=env,
-        cwd=str(PROJECT),
-        text=True,
-        timeout=60,
-    ).strip()
-
-    for line in out.splitlines():
-        if line.startswith("TOKEN:"):
-            return line[len("TOKEN:"):]
-
-    raise AssertionError(f"Dekripsi XSRF-TOKEN gagal: {out}")
-
-
 # ===========================================================================
 # TF-5 : Register
 # ===========================================================================
@@ -235,9 +208,12 @@ class TestTF5Register(unittest.TestCase):
         isi_form_register(d, "Selenium Job Seeker", email, "password123", "job_seeker")
         submit(d)
 
-        # redirect ke dashboard sesuai peran (isi halaman: menunggu route tiket lain)
+        # redirect ke dashboard sesuai peran, halaman tampil sempurna,
+        # dan muncul pesan sukses registrasi
         wait_url(d, "/seeker/dashboard")
-        self.assertIn("/seeker/dashboard", d.current_url)
+        wait_text(d, "Kelengkapan Profil")
+        self.assertIn("Selenium Job Seeker", d.page_source)  # nama di header/flash
+        self.assertIn("berhasil dibuat", d.page_source)  # flash sukses
         self.assertNotIn("/register", d.current_url, "gagal daftar, masih di form")
 
     def test_05_daftar_sebagai_employer(self):
@@ -247,8 +223,11 @@ class TestTF5Register(unittest.TestCase):
         isi_form_register(d, "Selenium Employer", email, "password123", "employer")
         submit(d)
 
+        # redirect ke dashboard employer + empty state profil perusahaan
         wait_url(d, "/employer/dashboard")
-        self.assertIn("/employer/dashboard", d.current_url)
+        wait_text(d, "Profil perusahaan belum dibuat")
+        self.assertIn("Selenium Employer", d.page_source)
+        self.assertIn("berhasil dibuat", d.page_source)
         self.assertNotIn("/register", d.current_url, "gagal daftar, masih di form")
 
 
@@ -266,7 +245,7 @@ class TestTF7Logout(unittest.TestCase):
     def tearDown(self):
         self.driver.quit()
 
-    def test_01_login_lalu_logout_mengakhiri_sesi(self):
+    def test_01_logout_lewat_tombol_ui(self):
         d = self.driver
 
         # 1. login sebagai job seeker (akun demo)
@@ -275,37 +254,36 @@ class TestTF7Logout(unittest.TestCase):
         d.find_element(By.NAME, "email").send_keys("seeker@lokerin.test")
         d.find_element(By.NAME, "password").send_keys("password")
         submit(d)
-        wait_url(d, "/seeker/dashboard")  # auto-login -> dashboard peran
+        wait_url(d, "/seeker/dashboard")
 
-        # 2. pindah ke halaman publik (dashboard masih menunggu route tiket lain)
-        d.get(BASE + "/")
+        # 2. dashboard tampil sempurna → klik tombol Logout di sidebar
+        wait_text(d, "Kelengkapan Profil")
+        self.assertIn("Job Seeker", d.page_source)  # role tampil di header
+        d.find_element(By.CSS_SELECTOR, 'button[data-modal-open="logout-modal"]').click()
+
+        # 3. modal konfirmasi muncul → klik "Ya, logout"
+        confirm = WebDriverWait(d, WAIT).until(
+            EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='logout-modal']//button[@type='submit']")
+            ),
+            "Modal konfirmasi logout tidak muncul",
+        )
+        self.assertIn("Keluar dari Lokerin?", d.page_source)
+        confirm.click()
+
+        # 4. berhasil logout → kembali ke beranda
+        WebDriverWait(d, WAIT).until(
+            lambda x: x.current_url.rstrip("/") == BASE,
+            f"Logout gagal, URL akhir: {d.current_url}",
+        )
         self.assertIn("LOKERIN", d.page_source.upper())
 
-        # 3. POST /logout dengan token CSRF segar (cookie XSRF-TOKEN didekripsi)
-        token = decrypt_xsrf(d)
-        d.execute_script(
-            """
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/logout';
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = '_token';
-            input.value = arguments[0];
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-            """,
-            token,
-        )
-        time.sleep(2)  # tunggu POST + redirect ke beranda selesai
-
-        # 4. bukti sesi mati: halaman yang butuh login diarahkan ke login
+        # 5. sesi benar-benar mati → halaman yang butuh login diarahkan ke login
         d.get(BASE + "/seeker/dashboard")
         wait_url(d, "/login")
         self.assertIn("/login", d.current_url, "sesi masih hidup setelah logout!")
 
-        # 5. halaman publik tetap bisa dibuka sebagai guest
+        # 6. halaman publik tetap bisa dibuka sebagai guest
         d.get(BASE + "/login")
         self.assertIn("Selamat Datang Kembali", d.page_source)
 

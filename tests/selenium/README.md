@@ -5,7 +5,7 @@ Script ini menguji 2 tiket milik **FA** secara end-to-end memakai browser sunggu
 | Tiket | Fitur | Jumlah test |
 |---|---|---|
 | **TF-5** | Register akun sesuai peran (Job Seeker / Employer) | 5 test |
-| **TF-7** | Logout — mengakhiri sesi dengan aman | 1 test |
+| **TF-7** | Logout — klik tombol UI di dashboard, sesi berakhir aman | 1 test |
 | | **Total** | **6 test** |
 
 ---
@@ -46,10 +46,10 @@ test_02_validasi_form_kosong ... ok
 test_03_validasi_email_duplikat_dan_password_tidak_cocok ... ok
 test_04_daftar_sebagai_job_seeker ... ok
 test_05_daftar_sebagai_employer ... ok
-test_01_login_lalu_logout_mengakhiri_sesi ... ok
+test_01_logout_lewat_tombol_ui ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in ~37s
+Ran 6 tests in ~30s
 
 OK
 ```
@@ -70,14 +70,14 @@ OK
 | 1 | `test_01_form_daftar_tampil` | Halaman `/register` tampil: field nama, email, password, konfirmasi, **2 radio peran** (admin **tidak** bisa dipilih), link ke login |
 | 2 | `test_02_validasi_form_kosong` | Submit kosong → muncul *"Nama wajib diisi."*, *"Email wajib diisi."*, *"Password wajib diisi."* dan tetap di halaman register |
 | 3 | `test_03_validasi_email_duplikat_dan_password_tidak_cocok` | Email sudah terdaftar + password beda → *"Email sudah terdaftar"*, *"Konfirmasi password tidak cocok."* |
-| 4 | `test_04_daftar_sebagai_job_seeker` | Daftar sebagai **Job Seeker** → otomatis login → redirect ke `/seeker/dashboard` |
-| 5 | `test_05_daftar_sebagai_employer` | Daftar sebagai **Employer** → otomatis login → redirect ke `/employer/dashboard` |
+| 4 | `test_04_daftar_sebagai_job_seeker` | Daftar sebagai **Job Seeker** → auto-login → **dashboard tampil sempurna** + pesan sukses *"…berhasil dibuat"* |
+| 5 | `test_05_daftar_sebagai_employer` | Daftar sebagai **Employer** → auto-login → dashboard employer tampil (empty state profil perusahaan) + pesan sukses |
 
 ### TF-7 — Logout (`TestTF7Logout`)
 
 | # | Test | Yang diverifikasi |
 |---|---|---|
-| 1 | `test_01_login_lalu_logout_mengakhiri_sesi` | Login (akun demo) → **POST `/logout`** dengan token CSRF → halaman publik tetap bisa dibuka → mengakses halaman yang butuh login **dialihkan ke `/login`** (bukti sesi benar-benar mati) |
+| 1 | `test_01_logout_lewat_tombol_ui` | Login (akun demo) → dashboard tampil → **klik tombol "Logout" di sidebar** → modal *"Keluar dari Lokerin?"* muncul → klik **"Ya, logout"** → kembali ke beranda → mengakses halaman login-required **dialihkan ke `/login`** (bukti sesi benar-benar mati) |
 
 ---
 
@@ -86,15 +86,8 @@ OK
 ```
 tests/selenium/
 ├── README.md           ← file ini
-├── test_lokerin.py     ← script utama (Python + Selenium, framework unittest)
-└── decrypt_xsrp.php    ← helper: mendekripsi cookie XSRF-TOKEN jadi token CSRF
+└── test_lokerin.py     ← script utama (Python + Selenium, framework unittest)
 ```
-
-**Kenapa ada `decrypt_xsrp.php`?**
-Laravel **memutar (mengganti) token CSRF setiap kali user login** (fitur keamanan
-anti session-fixation). Token lama dari form login jadi tidak berlaku. Script PHP
-ini mendekripsi cookie `XSRF-TOKEN` (yang selalu berisi token terbaru) memakai
-`APP_KEY` aplikasi, sehingga request `POST /logout` dari browser diterima server.
 
 ---
 
@@ -111,16 +104,18 @@ Server tes **terpisah** dari server manual kamu (`http://localhost:8000`), jadi 
 
 ## 6. Catatan & Troubleshooting
 
-- **Dashboard error 500 setelah register/login** — itu *bukan* bug test. Route
-  `seeker.cv.show`, `seeker.applications.*`, `employer.applicants.*` milik tiket
-  teman belum ada. Karena itu test TF-5 memverifikasi **redirect sesuai peran**,
-  dan test TF-7 mengirim POST logout dari halaman publik (bukan tombol di
-  dashboard). Begitu route teman merge, tombol UI dashboard bisa diuji.
+- **Menu sidebar otomatis menyesuaikan** — menu yang route/controller-nya belum ada
+  (fitur milik tiket lain: Skill, Pengalaman, CV, Lamaran, Pelamar, menu admin)
+  disembunyikan otomatis. Menu muncul sendiri begitu teman merge kode + route mereka.
+  Karena itu test memakai menu yang tersedia (Dashboard, Cari Lowongan, Profil, Pendidikan).
 - **`Login has been throttled` / 429** — login dibatasi 5x/menit (bawaan Laravel).
   Tunggu sebentar, lalu jalankan ulangi.
 - **Test membuat akun baru** setiap run (`selenium.seeker.*@lokerin.test`) —
-  aman untuk development; hapus kapan saja lewat admin/SQL kalau ingin rapi.
+  aman untuk development; hapus kapan saja lewat admin/SQL kalau mau rapi.
 - **ChromeDriver gagal diunduh** — pastikan ada internet; kalau perlu, hapus cache
   Selenium Manager di `%LOCALAPPDATA%\SeleniumManager`.
 - **`Connection refused` saat start** — port 8090 kemungkinan dipakai program
   lain; jalankan dengan port lain: `$env:LOKERIN_PORT='8091'` lalu ulangi.
+- **Test PHPUnit terkait** — jalankan `php artisan test` (terpisah dari Selenium).
+  `SeekerApplicationTest` error *"Class App\Models\Cv not found"* itu **normal**:
+  fitur CV/lamaran memang belum diimplementasi (tiket teman).
