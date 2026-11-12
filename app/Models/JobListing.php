@@ -69,6 +69,24 @@ class JobListing extends Model
         $query->where('status', JobStatus::Active)->whereDate('deadline', '>=', today());
     }
 
+    /**
+     * Apply the public keyword search.
+     *
+     * @param  Builder<JobListing>  $query
+     * @param  array<string, mixed>  $filters
+     */
+    public function scopeFilter(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['q'] ?? null, function (Builder $query, string $keyword): void {
+                $query->where(function (Builder $query) use ($keyword): void {
+                    $query->where('title', 'like', "%{$keyword}%")
+                        ->orWhere('location', 'like', "%{$keyword}%")
+                        ->orWhereHas('company', fn (Builder $query) => $query->where('name', 'like', "%{$keyword}%"));
+                });
+            });
+    }
+
     public function isOpen(): bool
     {
         return $this->status === JobStatus::Active && $this->deadline->endOfDay()->isFuture();
