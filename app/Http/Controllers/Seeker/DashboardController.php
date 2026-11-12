@@ -6,6 +6,7 @@ use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobListing;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -15,7 +16,23 @@ class DashboardController extends Controller
      */
     public function __invoke(Request $request): View
     {
-        $user = $request->user()->load(['profile', 'cv'])->loadCount(['educations', 'skills', 'workExperiences']);
+        // Tabel skills/work_experiences/cvs dibuat oleh tiket lain yang belum
+        // di-merge — hitung hanya relasi yang tabelnya sudah ada agar dashboard
+        // tetap tampil. Begitu migration teman masuk, data otomatis muncul.
+        $user = $request->user()->load('profile')->loadCount(array_values(array_filter([
+            'educations',
+            Schema::hasTable('skills') ? 'skills' : null,
+            Schema::hasTable('work_experiences') ? 'workExperiences' : null,
+        ])));
+
+        if (Schema::hasTable('cvs')) {
+            $user->load('cv');
+        } else {
+            $user->setRelation('cv', null);
+        }
+
+        $user->skills_count ??= 0;
+        $user->work_experiences_count ??= 0;
 
         $statusCounts = $user->applications()
             ->selectRaw('status, count(*) as total')

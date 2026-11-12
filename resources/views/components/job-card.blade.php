@@ -1,6 +1,6 @@
-@props(['job', 'href'])
+@props(['job', 'href' => null])
 
-<a href="{{ $href }}" class="card group flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 hover:border-navy-200 hover:shadow-md">
+<{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif class="card group flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 hover:border-navy-200 hover:shadow-md">
     <div class="flex items-start gap-3">
         <x-avatar :src="$job->company->logoUrl()" :initials="$job->company->initials()" size="size-12" rounded="rounded-xl" />
         <div class="min-w-0 flex-1">
@@ -32,4 +32,4 @@
         <span>{{ $job->published_at?->diffForHumans() }}</span>
         <span>Batas {{ $job->deadline->translatedFormat('d M Y') }}</span>
     </div>
-</a>
+</{{ $href ? 'a' : 'div' }}>
