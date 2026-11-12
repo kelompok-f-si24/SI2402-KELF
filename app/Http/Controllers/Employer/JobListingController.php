@@ -8,8 +8,10 @@ use App\Enums\JobStatus;
 use App\Enums\WorkSystem;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employer\JobListingRequest;
+use App\Models\JobListing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -54,6 +56,22 @@ class JobListingController extends Controller
         ]);
 
         return redirect()->route('employer.jobs.index')->with('success', 'Lowongan berhasil dipublikasikan.');
+    }
+
+    public function edit(JobListing $jobListing): View
+    {
+        Gate::authorize('update', $jobListing);
+
+        return view('employer.jobs.edit', ['job' => $jobListing, ...$this->formOptions()]);
+    }
+
+    public function update(JobListingRequest $request, JobListing $jobListing): RedirectResponse
+    {
+        Gate::authorize('update', $jobListing);
+
+        $jobListing->update($request->validated());
+
+        return redirect()->route('employer.jobs.index')->with('success', 'Lowongan berhasil diperbarui.');
     }
 
     /**
