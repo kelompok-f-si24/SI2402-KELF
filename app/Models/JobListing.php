@@ -70,7 +70,7 @@ class JobListing extends Model
     }
 
     /**
-     * Apply the public keyword search.
+     * Apply the public search and filter parameters.
      *
      * @param  Builder<JobListing>  $query
      * @param  array<string, mixed>  $filters
@@ -84,7 +84,13 @@ class JobListing extends Model
                         ->orWhere('location', 'like', "%{$keyword}%")
                         ->orWhereHas('company', fn (Builder $query) => $query->where('name', 'like', "%{$keyword}%"));
                 });
-            });
+            })
+            ->when($filters['location'] ?? null, fn (Builder $query, string $location) => $query->where('location', 'like', "%{$location}%"))
+            ->when($filters['category'] ?? null, fn (Builder $query, string $category) => $query->where('category', $category))
+            ->when($filters['employment_type'] ?? null, fn (Builder $query, string $type) => $query->where('employment_type', $type))
+            ->when($filters['work_system'] ?? null, fn (Builder $query, string $system) => $query->where('work_system', $system))
+            ->when($filters['salary_min'] ?? null, fn (Builder $query, int|string $salary) => $query->where('salary_max', '>=', (int) $salary))
+            ->when($filters['salary_max'] ?? null, fn (Builder $query, int|string $salary) => $query->where('salary_min', '<=', (int) $salary));
     }
 
     public function isOpen(): bool
