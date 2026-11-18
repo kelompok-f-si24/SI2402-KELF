@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\Recaptcha;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -22,10 +23,16 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
+
+        if (config('services.recaptcha.enabled', true) && ! app()->runningUnitTests()) {
+            $rules['g-recaptcha-response'] = ['required', new Recaptcha];
+        }
+
+        return $rules;
     }
 
     /**
@@ -39,6 +46,7 @@ class LoginRequest extends FormRequest
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'password.required' => 'Password wajib diisi.',
+            'g-recaptcha-response.required' => 'Silakan centang verifikasi reCAPTCHA "Saya bukan robot".',
         ];
     }
 }

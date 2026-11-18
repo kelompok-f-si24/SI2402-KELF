@@ -23,6 +23,8 @@
             @enderror
         </div>
 
+        <x-form.recaptcha />
+
         <button type="submit" class="btn btn-primary w-full py-3">Daftar</button>
 
         <p class="text-center text-sm text-slate-500">

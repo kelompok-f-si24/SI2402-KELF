@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\UserRole;
+use App\Rules\Recaptcha;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,12 +25,18 @@ class RegisterRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', Rule::in(array_keys(UserRole::registrable()))],
         ];
+
+        if (config('services.recaptcha.enabled', true) && ! app()->runningUnitTests()) {
+            $rules['g-recaptcha-response'] = ['required', new Recaptcha];
+        }
+
+        return $rules;
     }
 
     /**
@@ -50,6 +57,7 @@ class RegisterRequest extends FormRequest
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'role.required' => 'Pilih peran Anda.',
             'role.in' => 'Peran tidak valid.',
+            'g-recaptcha-response.required' => 'Silakan centang verifikasi reCAPTCHA "Saya bukan robot".',
         ];
     }
 }

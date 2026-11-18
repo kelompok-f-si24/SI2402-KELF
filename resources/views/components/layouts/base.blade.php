@@ -8,8 +8,10 @@
     <meta name="description" content="Lokerin - platform pencarian lowongan kerja yang menghubungkan pencari kerja dengan perusahaan.">
     <title>{{ $title ? $title.' - ' : '' }}LOKERIN</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('scripts')
 </head>
 <body class="min-h-screen font-sans text-slate-800 antialiased {{ $bodyClass }}">
     {{ $slot }}
+    @stack('body-scripts')
 </body>
 </html>

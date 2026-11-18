@@ -10,6 +10,8 @@
             Ingat saya
         </label>
 
+        <x-form.recaptcha />
+
         <button type="submit" class="btn btn-primary w-full py-3">Masuk</button>
 
         <p class="text-center text-sm text-slate-500">
