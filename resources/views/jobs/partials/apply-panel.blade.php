@@ -25,7 +25,9 @@
             <div class="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
                 Unggah CV terlebih dahulu sebelum melamar pekerjaan.
             </div>
-            <a href="{{ route('seeker.cv.show') }}" class="btn btn-primary mt-4 w-full"><x-icon name="upload" class="size-4" /> Upload CV</a>
+            @if (Route::has('seeker.cv.show'))
+                <a href="{{ route('seeker.cv.show') }}" class="btn btn-primary mt-4 w-full"><x-icon name="upload" class="size-4" /> Upload CV</a>
+            @endif
         @else
             <form method="POST" action="{{ route('seeker.applications.store', $job) }}" class="space-y-4">
                 @csrf
