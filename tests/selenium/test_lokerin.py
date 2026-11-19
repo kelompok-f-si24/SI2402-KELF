@@ -1,22 +1,26 @@
 """
 Selenium E2E - Lokerin (SI2402-KELF)
 =====================================
-Menguji 2 tiket milik FA:
-  TF-5 : register akun sesuai peran (job seeker / employer)
-  TF-7 : logout aman lewat tombol UI di dashboard (akhiri sesi)
+Menguji 3 alur autentikasi:
+  LOGIN    : form login, login sukses per peran, password salah
+  TF-5     : register akun sesuai peran (job seeker / employer)
+  TF-7     : logout aman lewat tombol UI di dashboard (akhiri sesi)
 
 Cara pakai (dari folder project):
     python tests\\selenium\\test_lokerin.py                 # jalankan semua test
-    python tests\\selenium\\test_lokerin.py TestTF5Register # jalankan sebagian
+    python tests\\selenium\\test_lokerin.py TestLogin       # jalankan sebagian
     $env:HEADLESS='1'; python tests\\selenium\\test_lokerin.py   # mode tanpa jendela browser
 
 Catatan:
 - Script menjalankan `php artisan serve` sendiri di port 8090 (dimatikan otomatis
-  di akhir). Untuk membuka web manual pakai: http://localhost:8000
+  di akhir) dengan RECAPTCHA_ENABLED=false. Untuk membuka web manual pakai:
+  http://localhost:8000 (reCAPTCHA aktif normal di sana).
 - Butuh Chrome terinstall + internet (Selenium Manager mengunduh chromedriver
   sekali saja).
 - Menu sidebar otomatis menyembunyikan fitur yang route/controller-nya belum ada
   (milik tiket lain) — test memakai menu yang tersedia.
+- Login dibatasi 5x/menit (throttle bawaan Laravel). Satu run penuh memakai
+  4 POST login, jadi tunggu ±1 menit sebelum menjalankan ulang.
 """
 
 import os
@@ -64,6 +68,9 @@ def ensure_server():
     _server_proc = subprocess.Popen(
         [PHP, "artisan", "serve", "--host=127.0.0.1", f"--port={PORT}"],
         cwd=str(PROJECT),
+        # reCAPTCHA dinonaktifkan hanya di server test supaya hasil deterministik
+        # (form login/register tidak butuh klik widget Google).
+        env={**os.environ, "RECAPTCHA_ENABLED": "false"},
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -139,6 +146,68 @@ def submit(driver):
 
 def email_unik(prefix):
     return f"selenium.{prefix}.{uuid.uuid4().hex[:8]}@lokerin.test"
+
+
+# ===========================================================================
+# LOGIN
+# ===========================================================================
+
+class TestLogin(unittest.TestCase):
+    """Login: pengguna terdaftar bisa masuk dan diarahkan ke dashboard perannya,
+    sedangkan kredensial salah ditolak dengan pesan yang jelas."""
+
+    def setUp(self):
+        self.driver = make_driver()
+
+    def tearDown(self):
+        self.driver.quit()
+
+    def test_01_form_login_tampil(self):
+        d = self.driver
+        d.get(BASE + "/login")
+
+        self.assertIn("Selamat Datang Kembali", d.page_source)
+        email = d.find_element(By.NAME, "email")
+        password = d.find_element(By.NAME, "password")
+        self.assertEqual(email.get_attribute("type"), "email")
+        self.assertEqual(password.get_attribute("type"), "password")
+        self.assertTrue(email.get_attribute("required"), "input email harus wajib diisi")
+        self.assertTrue(password.get_attribute("required"), "input password harus wajib diisi")
+        self.assertTrue(d.find_elements(By.NAME, "remember"), "checkbox 'Ingat saya' tidak ada")
+        self.assertTrue(d.find_elements(By.LINK_TEXT, "Daftar gratis"), "link ke halaman daftar tidak ada")
+
+    def test_02_login_sukses_sebagai_job_seeker(self):
+        d = self.driver
+        d.get(BASE + "/login")
+        d.find_element(By.NAME, "email").send_keys("seeker@lokerin.test")
+        d.find_element(By.NAME, "password").send_keys("password")
+        submit(d)
+
+        # diarahkan ke dashboard sesuai peran + halaman tampil sempurna
+        wait_url(d, "/seeker/dashboard")
+        wait_text(d, "Kelengkapan Profil")
+        self.assertIn("Job Seeker", d.page_source)  # label peran di header
+
+    def test_03_login_gagal_password_salah(self):
+        d = self.driver
+        d.get(BASE + "/login")
+        d.find_element(By.NAME, "email").send_keys("seeker@lokerin.test")
+        d.find_element(By.NAME, "password").send_keys("password-salah")
+        submit(d)
+
+        wait_text(d, "Email atau password salah.")
+        self.assertIn("/login", d.current_url, "harus tetap di halaman login")
+
+    def test_04_login_sukses_sebagai_employer(self):
+        d = self.driver
+        d.get(BASE + "/login")
+        d.find_element(By.NAME, "email").send_keys("employer@lokerin.test")
+        d.find_element(By.NAME, "password").send_keys("password")
+        submit(d)
+
+        wait_url(d, "/employer/dashboard")
+        wait_text(d, "Profil perusahaan belum dibuat")  # akun demo belum punya perusahaan
+        self.assertIn("Employer", d.page_source)  # label peran di header
 
 
 # ===========================================================================
