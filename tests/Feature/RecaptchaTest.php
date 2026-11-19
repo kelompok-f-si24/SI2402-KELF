@@ -34,9 +34,12 @@ class RecaptchaTest extends TestCase
     {
         Config::set('services.recaptcha.enabled', true);
 
+        // Sama seperti LoginRequest/RegisterRequest: rule dipasangkan dengan
+        // 'required' karena rule non-implicit dilewati Laravel untuk nilai kosong.
         $validator = Validator::make(
             ['g-recaptcha-response' => ''],
-            ['g-recaptcha-response' => [new Recaptcha]]
+            ['g-recaptcha-response' => ['required', new Recaptcha]],
+            ['g-recaptcha-response.required' => 'Silakan centang verifikasi reCAPTCHA "Saya bukan robot".']
         );
 
         $this->assertTrue($validator->fails());
